@@ -1,0 +1,192 @@
+using Azure.Messaging.ServiceBus;
+using BaggageDemo.Common;
+using BaggageDemo.Contracts;
+using BaggageDemo.GrpcApi;
+using Grpc.Net.Client;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
+using RabbitMQ.Client;
+using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
+
+namespace BaggageDemo.WebApi;
+
+public class OrderService
+{
+	private readonly ILogger<OrderService> _logger;
+	private readonly IConfiguration _configuration;
+
+	public OrderService(ILogger<OrderService> logger, IConfiguration _configuration)
+	{
+		_logger = logger;
+		this._configuration = _configuration;
+	}
+
+	public async Task<OrderResult> CreateOrderAsync(CreateOrderRequest request)
+	{
+		var myContext = MyContextHelper.GetBaggage();
+
+		if (myContext == null)
+		{
+			myContext = new MyContext
+			{
+				TenantId = "Tenant1",
+				UserId = "User1",
+				CorrelationId = Activity.Current?.TraceId.ToString()
+			};
+			MyContextHelper.SetBaggage(myContext);
+		}
+
+		Console.WriteLine(
+			JsonSerializer.Serialize(myContext, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+		);
+
+		var orderId = Guid.NewGuid().ToString();
+		var grpcResult = await CallGrpcServiceAsync(orderId, request);
+		await PublishMessageAsync(orderId, request);
+
+		_logger.LogError("GrpcApi {TraceId}", Activity.Current?.TraceId.ToString());
+		return new OrderResult
+		{
+			OrderId = orderId,
+			Status = "Created",
+			GrpcResponse = grpcResult
+		};
+	}
+
+	private async Task<string> CallGrpcServiceAsync(string orderId, CreateOrderRequest request)
+	{
+		try
+		{
+			// In production, use HttpClientFactory and service discovery
+			var grpcAddress = _configuration["GrpcApi:Address"]!;
+
+			using var channel = GrpcChannel.ForAddress(grpcAddress);
+			var client = new BaggageProcessor.BaggageProcessorClient(channel);
+
+			var grpcRequest = new OrderRequest
+			{
+				OrderId = orderId,
+				CustomerName = request.CustomerName,
+				Amount = (double)request.Amount
+			};
+
+			// Baggage is automatically propagated via gRPC metadata by OpenTelemetry
+			var reply = await client.ProcessOrderAsync(grpcRequest);
+			var myContext = MyContextHelper.GetBaggage()!;
+
+			_logger.LogInformation(
+				"gRPC response: {Message}, TenantId: {TenantId}, CorrelationId: {CorrelationId}",
+				reply.Message, myContext.TenantId, myContext.CorrelationId);
+
+			return reply.Message;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error calling gRPC service");
+			return $"gRPC call failed: {ex.Message}";
+		}
+	}
+
+	private async Task PublishMessageAsync(string orderId, CreateOrderRequest request)
+	{
+		try
+		{
+			await this.PublishRabbitMqMessageAsync(orderId, request);
+			_logger.LogInformation("Published message for order {OrderId}", orderId);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error publishing message to RabbitMQ");
+		}
+
+		try
+		{
+			await this.PublishServiceBusMessageAsync(orderId, request);
+			_logger.LogInformation("Published message for order {OrderId}", orderId);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error publishing message to ServiceBus");
+		}
+	}
+
+	private async Task PublishRabbitMqMessageAsync(string orderId, CreateOrderRequest request)
+	{
+		var rabbitHost = _configuration["RabbitMQ:Host"] ?? "localhost";
+		var factory = new ConnectionFactory { HostName = rabbitHost };
+
+		using var connection = await factory.CreateConnectionAsync();
+		using var channel = await connection.CreateChannelAsync();
+
+		await channel.QueueDeclareAsync(
+			queue: "orders",
+			durable: true,
+			exclusive: false,
+			autoDelete: false,
+			arguments: null);
+
+		var message = new OrderCreatedMessage
+		{
+			OrderId = orderId,
+			CustomerName = request.CustomerName,
+			Amount = request.Amount,
+			CreatedAt = DateTime.UtcNow,
+		};
+		var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+		var props = new BasicProperties { Headers = new Dictionary<string, object?>() };
+
+		Propagators.DefaultTextMapPropagator.Inject(
+			new PropagationContext(Activity.Current!.Context, Baggage.Current),
+			props.Headers,
+			(props, key, value) => props[key] = value
+		);
+
+		await channel.BasicPublishAsync(
+			exchange: string.Empty,
+			routingKey: "orders",
+			true,
+			basicProperties: props,
+			body: body
+		);
+
+		_logger.LogInformation("Published message for order {OrderId}", orderId);
+	}
+
+	private async Task PublishServiceBusMessageAsync(string orderId, CreateOrderRequest request)
+	{
+		var client = new ServiceBusClient(_configuration["ServiceBus:ConnectionString"]);
+		var sender = client.CreateSender("orders");
+
+		var message = new OrderCreatedMessage
+		{
+			OrderId = orderId,
+			CustomerName = request.CustomerName,
+			Amount = request.Amount,
+			CreatedAt = DateTime.UtcNow,
+		};
+		var sbMessage = new ServiceBusMessage(JsonSerializer.Serialize(message));
+
+		Propagators.DefaultTextMapPropagator.Inject(
+			new PropagationContext(Activity.Current!.Context, Baggage.Current),
+			sbMessage.ApplicationProperties,
+			(properties, key, value) => properties[key] = value
+		);
+
+		await sender.SendMessageAsync(sbMessage);
+	}
+}
+
+public class CreateOrderRequest
+{
+	public required string CustomerName { get; init; }
+	public decimal Amount { get; init; }
+}
+
+public class OrderResult
+{
+	public required string OrderId { get; init; }
+	public required string Status { get; init; }
+	public string? GrpcResponse { get; init; }
+}

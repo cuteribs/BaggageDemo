@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Common/BaggageDemo.Common.csproj" />
+  <Project Path="GrpcApi/BaggageDemo.GrpcApi.csproj" />
+  <Project Path="MessageHandler/BaggageDemo.MessageHandler.csproj" />
+  <Project Path="WebApi/BaggageDemo.WebApi.csproj" />
+</Solution>

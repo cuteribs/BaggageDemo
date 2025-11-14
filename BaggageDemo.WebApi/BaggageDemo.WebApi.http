@@ -1,6 +1,0 @@
-@BaggageDemo.WebApi_HostAddress = http://localhost:5263
-
-GET {{BaggageDemo.WebApi_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
