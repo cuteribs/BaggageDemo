@@ -1,0 +1,10 @@
+{
+	"IsEncrypted": false,
+	"Values": {
+		"AzureWebJobsStorage": "UseDevelopmentStorage=true",
+		"FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+		"ConnectionStrings:RabbitMQ": "amqp://guest:guest@localhost:5672/",
+		"ConnectionStrings:ServiceBus": "Endpoint=sb://daprpubsubdemo.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=S12AcB7YrBTUKhEFJvXEQ7DAWcN96f6PR\u002BASbLNj0vc="
+	}
+}

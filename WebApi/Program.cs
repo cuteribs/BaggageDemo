@@ -1,5 +1,6 @@
 using BaggageDemo.Common;
 using BaggageDemo.WebApi;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,14 +14,12 @@ builder.Services.AddHttpClient();
 var app = builder.Build();
 
 // Baggage demonstration endpoint
-app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService orderService) =>
+app.MapPost("/orders", async (CreateOrderRequest request, OrderService orderService) =>
 {
     var result = await orderService.CreateOrderAsync(request);
-    return Results.Ok(result);
-})
-.WithName("CreateOrder");
+    return result;
+});
 
-app.MapGet("/api/health", () => Results.Ok(new { Status = "Healthy", Service = "WebApi" }))
-    .WithName("HealthCheck");
+app.MapGet("/ping", () => Console.WriteLine($">> Ping {Activity.Current?.Id}"));
 
 app.Run();

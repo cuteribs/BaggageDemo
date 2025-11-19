@@ -1,7 +1,7 @@
 @webapi = http://localhost:5000
 
 ### Create Order - Demonstrates Baggage Propagation
-POST {{webapi}}/api/orders
+POST {{webapi}}/orders
 Content-Type: application/json
 baggage: MyContext=eyJUZW5hbnRJZCI6InRlbmFudC1pZC0xMTEiLCJVc2VySWQiOiJ1c2VyLWlkLTIyMiJ9
 
@@ -13,7 +13,7 @@ baggage: MyContext=eyJUZW5hbnRJZCI6InRlbmFudC1pZC0xMTEiLCJVc2VySWQiOiJ1c2VyLWlkL
 ###
 
 ### Create Another Order - Auto-generated Correlation ID
-POST {{webapi}}/api/orders
+POST {{webapi}}/orders
 Content-Type: application/json
 
 {
@@ -24,6 +24,6 @@ Content-Type: application/json
 ###
 
 ### Health Check
-GET {{webapi}}/api/health
+GET {{webapi}}/ping
 
 ###

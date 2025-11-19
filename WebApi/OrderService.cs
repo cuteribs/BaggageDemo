@@ -16,10 +16,10 @@ public class OrderService
 	private readonly ILogger<OrderService> _logger;
 	private readonly IConfiguration _configuration;
 
-	public OrderService(ILogger<OrderService> logger, IConfiguration _configuration)
+	public OrderService(ILogger<OrderService> logger, IConfiguration configuration)
 	{
 		_logger = logger;
-		this._configuration = _configuration;
+		_configuration = configuration;
 	}
 
 	public async Task<OrderResult> CreateOrderAsync(CreateOrderRequest request)
@@ -40,6 +40,7 @@ public class OrderService
 		var orderId = Guid.NewGuid().ToString();
 		//var grpcResult = await CallGrpcServiceAsync(orderId, request);
 		await PublishMessageAsync(orderId, request);
+		_logger.LogWarning(">> CreateOrderAsync: {ActivityId}", Activity.Current?.Id);
 		return new OrderResult
 		{
 			OrderId = orderId,
@@ -134,12 +135,7 @@ public class OrderService
 		};
 		var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
 		var props = new BasicProperties { Headers = new Dictionary<string, object?>() };
-
-		Propagators.DefaultTextMapPropagator.Inject(
-			new PropagationContext(Activity.Current!.Context, Baggage.Current),
-			props.Headers,
-			(props, key, value) => props[key] = value
-		);
+		ActivityHelper.Inject(props.Headers, Activity.Current);
 
 		await channel.BasicPublishAsync(
 			exchange: string.Empty,
@@ -164,18 +160,8 @@ public class OrderService
 			Amount = request.Amount,
 			CreatedAt = DateTime.UtcNow,
 		};
-		var sbMessage = new ServiceBusMessage(JsonSerializer.Serialize(message));
-
-		//Propagators.DefaultTextMapPropagator.Inject(
-		//	new PropagationContext(Activity.Current!.Context, Baggage.Current),
-		//	sbMessage.ApplicationProperties,
-		//	(properties, key, value) => properties[key] = value
-		//);
-		//sbMessage.ApplicationProperties.Add("Diagnostic-Id", Activity.Current?.Id);
-
-		await sender.SendMessageAsync(sbMessage);
 		var message = new ServiceBusMessage(JsonSerializer.Serialize(payload));
-		Propagators.DefaultTextMapPropagator.Inject(message);
+		ActivityHelper.Inject(message.ApplicationProperties, Activity.Current);
 		await sender.SendMessageAsync(message);
 	}
 }
