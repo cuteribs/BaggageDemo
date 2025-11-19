@@ -3,13 +3,11 @@
 ### Create Order - Demonstrates Baggage Propagation
 POST {{webapi}}/api/orders
 Content-Type: application/json
+baggage: MyContext=eyJUZW5hbnRJZCI6InRlbmFudC1pZC0xMTEiLCJVc2VySWQiOiJ1c2VyLWlkLTIyMiJ9
 
 {
   "customerName": "Alice Johnson",
-  "amount": 177.99,
-  "tenantId": "tenant-acme-corp",
-  "userId": "user-alice-123",
-  "correlationId": "order-2024-001"
+  "amount": 177.99
 }
 
 ###
@@ -20,9 +18,7 @@ Content-Type: application/json
 
 {
   "customerName": "Bob Smith",
-  "amount": 150.00,
-  "tenantId": "tenant-widgets-inc",
-  "userId": "user-bob-456"
+  "amount": 150.00
 }
 
 ###

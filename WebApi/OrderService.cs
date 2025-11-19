@@ -1,6 +1,5 @@
 using Azure.Messaging.ServiceBus;
 using BaggageDemo.Common;
-using BaggageDemo.Contracts;
 using BaggageDemo.GrpcApi;
 using Grpc.Net.Client;
 using OpenTelemetry;
@@ -32,26 +31,19 @@ public class OrderService
 			myContext = new MyContext
 			{
 				TenantId = "Tenant1",
-				UserId = "User1",
-				CorrelationId = Activity.Current?.TraceId.ToString()
+				UserId = "User1"
 			};
 			MyContextHelper.SetBaggage(myContext);
+			Baggage.SetBaggage("Custom", JsonSerializer.Serialize(new { Info = "Some custom baggage data" }));
 		}
 
-		Console.WriteLine(
-			JsonSerializer.Serialize(myContext, new JsonSerializerOptions(JsonSerializerDefaults.Web))
-		);
-
 		var orderId = Guid.NewGuid().ToString();
-		var grpcResult = await CallGrpcServiceAsync(orderId, request);
+		//var grpcResult = await CallGrpcServiceAsync(orderId, request);
 		await PublishMessageAsync(orderId, request);
-
-		_logger.LogError("GrpcApi {TraceId}", Activity.Current?.TraceId.ToString());
 		return new OrderResult
 		{
 			OrderId = orderId,
-			Status = "Created",
-			GrpcResponse = grpcResult
+			Status = "Created"
 		};
 	}
 
@@ -75,10 +67,16 @@ public class OrderService
 			// Baggage is automatically propagated via gRPC metadata by OpenTelemetry
 			var reply = await client.ProcessOrderAsync(grpcRequest);
 			var myContext = MyContextHelper.GetBaggage()!;
-
 			_logger.LogInformation(
-				"gRPC response: {Message}, TenantId: {TenantId}, CorrelationId: {CorrelationId}",
-				reply.Message, myContext.TenantId, myContext.CorrelationId);
+				"-- WebApi -- Processing order {OrderId} for customer {CustomerName} with amount {Amount}. " +
+				"Baggage -> TenantId: {TenantId}, UserId: {UserId}, TraceId {TraceId}",
+				grpcRequest.OrderId,
+				grpcRequest.CustomerName,
+				grpcRequest.Amount,
+				myContext.TenantId,
+				myContext.UserId,
+				Activity.Current!.TraceId.ToString()
+			);
 
 			return reply.Message;
 		}
@@ -156,10 +154,10 @@ public class OrderService
 
 	private async Task PublishServiceBusMessageAsync(string orderId, CreateOrderRequest request)
 	{
-		var client = new ServiceBusClient(_configuration["ServiceBus:ConnectionString"]);
+		var client = new ServiceBusClient(_configuration["ConnectionStrings:ServiceBus"]);
 		var sender = client.CreateSender("orders");
 
-		var message = new OrderCreatedMessage
+		var payload = new OrderCreatedMessage
 		{
 			OrderId = orderId,
 			CustomerName = request.CustomerName,
@@ -168,13 +166,17 @@ public class OrderService
 		};
 		var sbMessage = new ServiceBusMessage(JsonSerializer.Serialize(message));
 
-		Propagators.DefaultTextMapPropagator.Inject(
-			new PropagationContext(Activity.Current!.Context, Baggage.Current),
-			sbMessage.ApplicationProperties,
-			(properties, key, value) => properties[key] = value
-		);
+		//Propagators.DefaultTextMapPropagator.Inject(
+		//	new PropagationContext(Activity.Current!.Context, Baggage.Current),
+		//	sbMessage.ApplicationProperties,
+		//	(properties, key, value) => properties[key] = value
+		//);
+		//sbMessage.ApplicationProperties.Add("Diagnostic-Id", Activity.Current?.Id);
 
 		await sender.SendMessageAsync(sbMessage);
+		var message = new ServiceBusMessage(JsonSerializer.Serialize(payload));
+		Propagators.DefaultTextMapPropagator.Inject(message);
+		await sender.SendMessageAsync(message);
 	}
 }
 

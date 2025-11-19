@@ -1,10 +1,13 @@
+using Azure.Core;
 using Azure.Messaging.ServiceBus;
+using BaggageDemo.Common;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 
 namespace BaggageDemo.MessageHandler;
 
@@ -96,15 +99,21 @@ public class OrderMessageWorker : BackgroundService
 
 				try
 				{
-					_logger.LogWarning("Received RabbitMQ message");
-					var body = ea.Body.ToArray();
-					var messageJson = Encoding.UTF8.GetString(body);
-					_logger.LogWarning($"[x] Received: {messageJson}");
+					_logger.LogInformation("Received RabbitMQ message");
+					var body = Encoding.UTF8.GetString(ea.Body.ToArray());
+					var order = JsonSerializer.Deserialize<OrderCreatedMessage>(body)!;
 
-					foreach (var item in Baggage.Current)
-					{
-						_logger.LogWarning($"Baggage: {item.Key} = {item.Value}");
-					}
+					var myContext = MyContextHelper.GetBaggage()!;
+					_logger.LogWarning(
+						"-- MessageHandler -- Processing order {OrderId} for customer {CustomerName} with amount {Amount}. " +
+						"Baggage -> TenantId: {TenantId}, UserId: {UserId}, TraceId {TraceId}",
+						order.OrderId,
+						order.CustomerName,
+						order.Amount,
+						myContext.TenantId,
+						myContext.UserId,
+						Activity.Current!.TraceId.ToString()
+					);
 
 					await _rmqChannel.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
 				}
@@ -113,7 +122,6 @@ public class OrderMessageWorker : BackgroundService
 					_logger.LogError(ex, "Error processing message");
 					await _rmqChannel.BasicNackAsync(ea.DeliveryTag, false, true, stoppingToken);
 				}
-				_logger.LogError("MessageHandler {TraceId}", activity?.TraceId.ToString());
 			};
 
 			await _rmqChannel.BasicConsumeAsync(
@@ -155,21 +163,25 @@ public class OrderMessageWorker : BackgroundService
 				propagationContext.ActivityContext
 			);
 
-			_logger.LogWarning("Received ServiceBus message");
+			_logger.LogInformation("Received ServiceBus message");
 
-			// 打印提取的 Baggage 信息
-			foreach (var item in Baggage.Current)
-			{
-				_logger.LogWarning($"Baggage: {item.Key} = {item.Value}");
-			}
-
-			// 处理接收到的消息
 			var body = args.Message.Body.ToString();
-			_logger.LogWarning($"[x] Received: {body}");
+			var order = JsonSerializer.Deserialize<OrderCreatedMessage>(body)!;
+
+			var myContext = MyContextHelper.GetBaggage()!;
+			_logger.LogWarning(
+				"-- MessageHandler -- Processing order {OrderId} for customer {CustomerName} with amount {Amount}. " +
+				"Baggage -> TenantId: {TenantId}, UserId: {UserId}, TraceId {TraceId}",
+				order.OrderId,
+				order.CustomerName,
+				order.Amount,
+				myContext.TenantId,
+				myContext.UserId,
+				Activity.Current!.TraceId.ToString()
+			);
 
 			// 完成消息
 			await args.CompleteMessageAsync(args.Message);
-			_logger.LogError("MessageHandler {TraceId}", activity?.TraceId.ToString());
 		};
 
 		processor.ProcessErrorAsync += args =>

@@ -1,0 +1,22 @@
+﻿<Project Sdk="Aspire.AppHost.Sdk/13.0.0">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>$(MSBuildProjectName)</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FunctionApp\BaggageDemo.FunctionApp.csproj" />
+    <ProjectReference Include="..\GrpcApi\BaggageDemo.GrpcApi.csproj" />
+    <ProjectReference Include="..\MessageHandler\BaggageDemo.MessageHandler.csproj" />
+    <ProjectReference Include="..\WebApi\BaggageDemo.WebApi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.Functions" Version="(13.0-*,13.1]" />
+  </ItemGroup>
+
+</Project>

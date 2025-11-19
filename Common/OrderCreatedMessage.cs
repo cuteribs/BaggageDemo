@@ -1,4 +1,4 @@
-namespace BaggageDemo.Contracts;
+namespace BaggageDemo.Common;
 
 public class OrderCreatedMessage
 {
@@ -11,6 +11,5 @@ public class OrderCreatedMessage
 public class MyContext
 {
     public string? TenantId { get; set; }
-    public string? CorrelationId { get; set; }
     public string? UserId { get; set; }
 }

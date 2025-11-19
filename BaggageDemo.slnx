@@ -1,5 +1,8 @@
 <Solution>
+  <Project Path="AppHost/BaggageDemo.AppHost.csproj" Id="865f8e36-acb7-4ceb-aa6b-9995f5771b44" />
   <Project Path="Common/BaggageDemo.Common.csproj" />
+  <Project Path="FunctionApp/BaggageDemo.FunctionApp.csproj" />
+  <Project Path="FuncApp/BaggageDemo.FuncApp.csproj" />
   <Project Path="GrpcApi/BaggageDemo.GrpcApi.csproj" />
   <Project Path="MessageHandler/BaggageDemo.MessageHandler.csproj" />
   <Project Path="WebApi/BaggageDemo.WebApi.csproj" />
