@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
 
 namespace BaggageDemo.Common;
 
@@ -11,21 +13,35 @@ public static class Extensions
 {
 	public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
 	{
-		builder.Logging.AddOpenTelemetry(x =>
-		{
-			x.IncludeFormattedMessage = true;
-			x.IncludeScopes = true;
-		});
+		//builder.Logging.AddOpenTelemetry(x =>
+		//{
+		//	x.IncludeFormattedMessage = true;
+		//	x.IncludeScopes = true;
+		//});
 
-		builder.Services.AddOpenTelemetry()
-			.WithTracing(x => x.AddSource(builder.Environment.ApplicationName)
-				.AddAspNetCoreInstrumentation()
-				.AddGrpcClientInstrumentation()
-				.AddHttpClientInstrumentation()
-				.AddConsoleExporter()
-			);
+		//builder.Services.AddOpenTelemetry()
+		//	.WithTracing(x => x.AddSource(builder.Environment.ApplicationName)
+		//		.AddAspNetCoreInstrumentation()
+		//		.AddGrpcClientInstrumentation()
+		//		.AddHttpClientInstrumentation()
+		//		.AddConsoleExporter()
+		//	);
 
 		return builder;
+	}
+
+	public static string? FromBase64(this string? base64String)
+	{
+		if (base64String == null) return null;
+
+		return Encoding.UTF8.GetString(Convert.FromBase64String(base64String));
+	}
+
+	public static string? ToBase64(this string? normalString)
+	{
+		if (normalString == null) return null;
+
+		return Convert.ToBase64String(Encoding.UTF8.GetBytes(normalString));
 	}
 }
 
@@ -154,5 +170,22 @@ public static class ActivityHelper
 				var value = parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : null;
 				return new KeyValuePair<string, string?>(key, value);
 			});
+	}
+
+    public static T? GetBaggage<T>(string key, Activity? activity = null)
+    {
+		activity ??= Activity.Current;
+		var value = activity?.Baggage.FirstOrDefault(x => x.Key == key).Value;
+
+		if (value == null) return default;
+
+		return JsonSerializer.Deserialize<T>(value);
+	}
+
+	public static void SetBaggage<T>(string key, T value, Activity? activity = null)
+	{
+		activity ??= Activity.Current;
+		var json = JsonSerializer.Serialize(value);
+		activity?.SetBaggage(key, json);
 	}
 }

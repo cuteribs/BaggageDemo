@@ -15,7 +15,7 @@ public class BaggageProcessorService : BaggageProcessor.BaggageProcessorBase
 
 	public override Task<OrderReply> ProcessOrder(OrderRequest request, ServerCallContext context)
 	{
-		var myContext = MyContextHelper.GetBaggage()!;
+		var myContext = ActivityHelper.GetBaggage<MyContext>(nameof(MyContext));
 		_logger.LogInformation(
 			"-- GrpcApi -- Processing order {OrderId} for customer {CustomerName} with amount {Amount}. " +
 			"Baggage -> TenantId: {TenantId}, UserId: {UserId}, TraceId {TraceId}",

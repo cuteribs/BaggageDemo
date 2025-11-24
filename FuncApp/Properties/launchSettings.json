@@ -1,9 +1,11 @@
 {
-  "profiles": {
-    "FuncApp": {
-      "commandName": "Project",
-      "commandLineArgs": "--port 7231",
-      "launchBrowser": false
-    }
-  }
+	"profiles": {
+		"FuncApp": {
+			"commandName": "Project",
+			"commandLineArgs": "--port 7231",
+			"launchBrowser": false,
+			"environmentVariables": {
+			}
+		}
+	}
 }

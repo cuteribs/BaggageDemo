@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FunctionApp\BaggageDemo.FunctionApp.csproj" />
     <ProjectReference Include="..\GrpcApi\BaggageDemo.GrpcApi.csproj" />
     <ProjectReference Include="..\MessageHandler\BaggageDemo.MessageHandler.csproj" />
     <ProjectReference Include="..\WebApi\BaggageDemo.WebApi.csproj" />

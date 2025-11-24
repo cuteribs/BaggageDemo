@@ -3,7 +3,6 @@ using BaggageDemo.Common;
 using BaggageDemo.GrpcApi;
 using Grpc.Net.Client;
 using OpenTelemetry;
-using OpenTelemetry.Context.Propagation;
 using RabbitMQ.Client;
 using System.Diagnostics;
 using System.Text;
@@ -24,7 +23,7 @@ public class OrderService
 
 	public async Task<OrderResult> CreateOrderAsync(CreateOrderRequest request)
 	{
-		var myContext = MyContextHelper.GetBaggage();
+		var myContext = ActivityHelper.GetBaggage<MyContext>(nameof(MyContext));
 
 		if (myContext == null)
 		{
@@ -33,12 +32,12 @@ public class OrderService
 				TenantId = "Tenant1",
 				UserId = "User1"
 			};
-			MyContextHelper.SetBaggage(myContext);
-			Baggage.SetBaggage("Custom", JsonSerializer.Serialize(new { Info = "Some custom baggage data" }));
+			ActivityHelper.SetBaggage(nameof(MyContext), myContext);
+			ActivityHelper.SetBaggage("Custom", new { Info = "Some custom baggage data" });
 		}
 
 		var orderId = Guid.NewGuid().ToString();
-		//var grpcResult = await CallGrpcServiceAsync(orderId, request);
+		var grpcResult = await CallGrpcServiceAsync(orderId, request);
 		await PublishMessageAsync(orderId, request);
 		_logger.LogWarning(">> CreateOrderAsync: {ActivityId}", Activity.Current?.Id);
 		return new OrderResult
@@ -76,7 +75,7 @@ public class OrderService
 				grpcRequest.Amount,
 				myContext.TenantId,
 				myContext.UserId,
-				Activity.Current!.TraceId.ToString()
+				Activity.Current?.Id
 			);
 
 			return reply.Message;
@@ -102,7 +101,7 @@ public class OrderService
 
 		try
 		{
-			await this.PublishServiceBusMessageAsync(orderId, request);
+			//await this.PublishServiceBusMessageAsync(orderId, request);
 			_logger.LogInformation("Published message for order {OrderId}", orderId);
 		}
 		catch (Exception ex)

@@ -3,6 +3,7 @@
 	"Values": {
 		"AzureWebJobsStorage": "UseDevelopmentStorage=true",
 		"FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+		"APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=4ea0d9e5-c5d2-477f-99ab-63207bbac771;IngestionEndpoint=https://southeastasia-1.in.applicationinsights.azure.com/;LiveEndpoint=https://southeastasia.livediagnostics.monitor.azure.com/;ApplicationId=5273a9c7-9a79-424e-862e-8a332a173a11",
 
 		"ConnectionStrings:RabbitMQ": "amqp://guest:guest@localhost:5672/",
 		"ConnectionStrings:ServiceBus": "Endpoint=sb://daprpubsubdemo.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=S12AcB7YrBTUKhEFJvXEQ7DAWcN96f6PR\u002BASbLNj0vc="

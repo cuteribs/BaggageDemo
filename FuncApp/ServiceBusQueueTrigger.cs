@@ -23,18 +23,18 @@ public class ServiceBusQueueTrigger
 	)
 	{
 		_logger.LogWarning("Run 1 ActivityId: {ActivityId}", Activity.Current?.Id);
-		using var activity = new Activity(nameof(ServiceBusQueueTrigger));
-		ActivityHelper.Extract(message.ApplicationProperties, activity);
+		//using var activity = new Activity(nameof(ServiceBusQueueTrigger));
+		//ActivityHelper.Extract(message.ApplicationProperties, activity);
 
-		activity.Start();
+		//activity.Start();
 
 		_logger.LogWarning("Run 2 ActivityId: {ActivityId}", Activity.Current?.Id);
 
 		var input = new TaskInput
 		{
 			Payload = message.Body.ToString(),
-			TraceParent = activity.Id,
-			Baggage = ActivityHelper.Encode(activity.Baggage)
+			//TraceParent = activity.Id,
+			//Baggage = ActivityHelper.Encode(activity.Baggage)
 		};
 
 		await client.ScheduleNewOrchestrationInstanceAsync(

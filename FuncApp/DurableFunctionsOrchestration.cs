@@ -21,7 +21,7 @@ public class DurableFunctionsOrchestration
 	public async Task<List<string>> RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context, FunctionContext executionContext)
 	{
 		var input = context.GetInput<TaskInput>()!;
-		using var activity = ActivityHelper.StartNewActivity(nameof(DurableFunctionsOrchestration), input);
+		//using var activity = ActivityHelper.StartNewActivity(nameof(DurableFunctionsOrchestration), input);
 
 		_logger.LogWarning("RunOrchestrator ActivityId: {ActivityId}", Activity.Current?.Id);
 		await context.CallActivityAsync(nameof(SayHello), input);
@@ -35,7 +35,7 @@ public class DurableFunctionsOrchestration
 	public async Task SayHello([ActivityTrigger] TaskInput input)
 	{
 		_logger.LogWarning(">> SayHello1: {Name}, ActivityId: {ActivityId}", 1, Activity.Current?.Id);
-		using var activity = ActivityHelper.StartNewActivity(nameof(SayHello), input);
+		//using var activity = ActivityHelper.StartNewActivity(nameof(SayHello), input);
 		_logger.LogWarning("<< SayHello2: {Name}, ActivityId: {ActivityId}", 2, Activity.Current?.Id);
 		await InternalMethod();
 	}
